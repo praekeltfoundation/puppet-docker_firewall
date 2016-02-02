@@ -54,3 +54,8 @@ You should ensure that the `docker_firewall` class always runs after the Docker 
 
 ## Facter and the `docker0` interface
 Using this module at the same time as you install Docker may require a second run of Puppet as Facter will need a chance to pick up details about Docker's bridge interface (`docker0`). In order to set up the firewall, the `$::network_docker0` fact must be set.
+
+## Credits
+The `DOCKER_INPUT` chain was inspired by the idea of a `PRE_DOCKER` chain as described in [this blog post](http://rudijs.github.io/2015-07/docker-restricting-container-access-with-iptables/) by Rudi Starcevic.
+
+Many of the Puppet firewall rules were adapted from the [`hesco-weave`](https://github.com/hesco/hesco-weave) Puppet module source.
