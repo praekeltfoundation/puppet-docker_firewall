@@ -11,7 +11,7 @@ Puppetfile.lock
 
 # Fixture modules loaded by librarian-puppet
 /spec/fixtures/modules/
-!/spec/fixtures/modules/marathon
+!/spec/fixtures/modules/docker_firewall
 
 # Puppet
 /pkg/
