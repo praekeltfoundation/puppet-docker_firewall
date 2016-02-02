@@ -1,6 +1,6 @@
 {
   "name": "praekeltfoundation-docker_firewall",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "author": "Jamie Hewland",
   "summary": "Simplifies management of iptables rules when running Docker",
   "license": "BSD-3-Clause",
