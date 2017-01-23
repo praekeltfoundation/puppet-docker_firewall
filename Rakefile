@@ -1,4 +1,5 @@
 require 'puppetlabs_spec_helper/rake_tasks'
+require 'metadata-json-lint/rake_task'
 
 task :librarian_spec_prep do
   sh 'librarian-puppet install --path=spec/fixtures/modules/'
@@ -22,6 +23,10 @@ end
 # Coverage from puppetlabs_spec_helper requires rcov which doesn't work in
 # anything since Ruby 1.8.7
 Rake::Task[:coverage].clear
+
+# Remove puppetlabs_spec_helper's metadata and validate tasks
+Rake::Task[:validate].clear
+Rake::Task[:metadata].clear
 
 desc "Run syntax, lint, metadata and spec tests."
 task :test => [
