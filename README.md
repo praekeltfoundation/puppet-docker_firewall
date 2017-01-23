@@ -30,7 +30,7 @@ The following chains will be purged:
 
 By default, the policies of the chains will not be managed. You can use the `<chain>_policy` parameters to adjust this. The exception to this is the `filter`/`FORWARD` chain which, by default, will be set to have a policy of `DROP`. This is something the Docker daemon does since version 1.13.0. For more information see [this discussion](https://github.com/docker/docker/issues/14041).
 
-In addition, the `DOCKER` chains in the nat and filter tables are managed but not purged. Rules in the `DOCKER` chains are created by the Docker daemon and should not be changed.
+In addition, the `DOCKER` chain in the nat table and the `DOCKER` and `DOCKER-ISOLATION` chains in the filter table are managed but not purged. Rules in these chains are created by the Docker daemon and should not be changed.
 
 ## `DOCKER_INPUT` chain
 The major functionality of the class (limiting outside connections to containers) works by adding a chain called `DOCKER_INPUT` that handles connections destined for the `docker0` interface. This chain can be used much like the `INPUT` chain in the filter table would typically be used to whitelist connections, but instead of `ACCEPT`-ing connections, rather jump to the `DOCKER` chain.
