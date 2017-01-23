@@ -28,7 +28,8 @@
 #   table. Rules that match one or more of the regexes will not be deleted.
 #
 # [*output_nat_policy*]
-#   The default policy for the POSTROUTING chain in the nat table.
+#   The default policy for the POSTROUTING chain in the nat table. The default
+#   is 'drop'.
 #
 # [*forward_filter_purge_ignore*]
 #   A list of regexes to use when purging the OUTPUT chain in the nat table.
@@ -52,7 +53,7 @@ class docker_firewall (
   $postrouting_nat_purge_ignore = [],
   $postrouting_nat_policy       = undef,
   $forward_filter_purge_ignore  = [],
-  $forward_filter_policy        = undef,
+  $forward_filter_policy        = 'drop',
 
   $accept_eth0                  = false,
   $accept_eth1                  = false,
