@@ -149,11 +149,11 @@ class docker_firewall (
     policy => $forward_filter_policy,
   }
 
-  # The DOCKER-ISOLATION chain is new to Docker 1.10. It's purpose seems to be
-  # to isolate different Docker networks. Docker adds a rule as the first rule
-  # to the FORWARD chain that sends all traffic through the DOCKER-ISOLATION
-  # chain. The DOCKER-ISOLATION chain should only ever contain DROP rules so it
-  # should be safe to keep Docker's behaviour with regards to this chain.
+  # The DOCKER-ISOLATION chain is new to Docker 1.10. Its purpose is to isolate
+  # different Docker bridge networks. Docker adds a rule as the first rule to
+  # the FORWARD chain that sends all traffic through the DOCKER-ISOLATION chain.
+  # The DOCKER-ISOLATION chain should only ever contain DROP rules so it should
+  # be safe to keep Docker's behaviour with regards to this chain.
   # DOCKER-ISOLATION - let Docker manage this chain completely
   firewallchain { 'DOCKER-ISOLATION:filter:IPv4':
     ensure => present,
