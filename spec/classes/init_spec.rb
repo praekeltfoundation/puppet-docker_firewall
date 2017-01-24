@@ -3,9 +3,7 @@ require 'spec_helper'
 describe 'docker_firewall' do
   on_supported_os.each do |os, facts|
     context "on #{os}" do
-      let(:facts) do
-        facts
-      end
+      let(:facts) { add_docker0(facts) }
 
       it { should compile }
 
@@ -157,6 +155,17 @@ describe 'docker_firewall' do
             .with_iniface('docker0')
             .with_proto('all')
             .with_action('accept')
+        end
+      end
+
+      describe "when facts aren't available for docker0" do
+        let(:facts) { facts }
+
+        it do
+          is_expected.not_to contain_firewall(
+            '100 DOCKER chain, MASQUERADE docker bridge traffic not bound to '\
+            'docker bridge'
+          )
         end
       end
     end
