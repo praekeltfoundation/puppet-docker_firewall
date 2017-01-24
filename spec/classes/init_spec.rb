@@ -212,6 +212,34 @@ describe 'docker_firewall' do
             .with_policy('accept')
         end
       end
+
+      describe 'when accept_eth0 is true' do
+        let(:params) { {:accept_eth0 => true} }
+
+        it do
+          is_expected.to contain_firewall(
+            '200 DOCKER chain, DOCKER_INPUT traffic from eth0'
+          ).with_table('filter')
+            .with_chain('DOCKER_INPUT')
+            .with_iniface('eth0')
+            .with_proto('all')
+            .with_jump('DOCKER')
+        end
+      end
+
+      describe 'when accept_eth1 is true' do
+        let(:params) { {:accept_eth1 => true} }
+
+        it do
+          is_expected.to contain_firewall(
+            '200 DOCKER chain, DOCKER_INPUT traffic from eth1'
+          ).with_table('filter')
+            .with_chain('DOCKER_INPUT')
+            .with_iniface('eth1')
+            .with_proto('all')
+            .with_jump('DOCKER')
+        end
+      end
     end
   end
 end
