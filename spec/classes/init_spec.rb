@@ -25,6 +25,8 @@ describe 'docker_firewall' do
 
         it { is_expected.to contain_class('firewall') }
 
+        it { is_expected.to contain_docker_firewall__interface('docker0') }
+
         it do
           is_expected.to contain_firewallchain('PREROUTING:nat:IPv4')
             .with_ensure('present')
@@ -170,17 +172,6 @@ describe 'docker_firewall' do
             .with_iniface('docker0')
             .with_proto('all')
             .with_action('accept')
-        end
-      end
-
-      describe "when facts aren't available for docker0" do
-        let(:facts) { facts }
-
-        it do
-          is_expected.not_to contain_firewall(
-            '100 DOCKER chain, MASQUERADE docker bridge traffic not bound to '\
-            'docker bridge'
-          )
         end
       end
 
