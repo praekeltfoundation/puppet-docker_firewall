@@ -76,8 +76,8 @@ describe 'docker_firewall' do
 
         it do
           is_expected.to contain_firewall(
-            '100 DOCKER chain, MASQUERADE docker bridge traffic not bound to '\
-            'docker bridge'
+            '100 DOCKER chain, MASQUERADE docker0 bridge traffic not bound to '\
+            'docker0 bridge'
           ).with_table('nat')
             .with_chain('POSTROUTING')
             .with_source('172.17.0.0/16')
