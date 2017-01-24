@@ -84,6 +84,10 @@ describe 'docker_firewall::interface' do
         end
 
         it do
+          is_expected.to contain_docker_firewall__interface('br-d108dbddb4c8')
+        end
+
+        it do
           is_expected.to contain_firewall(
             '100 DOCKER chain, MASQUERADE br-d108dbddb4c8 bridge traffic not '\
             'bound to br-d108dbddb4c8 bridge'
