@@ -78,6 +78,7 @@ describe 'docker_firewall::interface' do
       end
 
       describe 'with a custom bridge interface' do
+        let(:title) { 'br-d108dbddb4c8' }
         let(:facts) do
           add_docker_iface facts, 'br-d108dbddb4c8', :network => '172.18.0.0'
         end
