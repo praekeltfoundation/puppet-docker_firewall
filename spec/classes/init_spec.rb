@@ -5,9 +5,24 @@ describe 'docker_firewall' do
     context "on #{os}" do
       let(:facts) { add_docker0(facts) }
 
-      it { should compile }
+      it { is_expected.to compile }
 
       describe 'with default options' do
+        it do
+          is_expected.to contain_class('docker_firewall').with(
+            :prerouting_nat_purge_ignore => [],
+            :prerouting_nat_policy => nil,
+            :output_nat_purge_ignore => [],
+            :output_nat_policy => nil,
+            :postrouting_nat_purge_ignore => [],
+            :postrouting_nat_policy => nil,
+            :forward_filter_purge_ignore => [],
+            :forward_filter_policy => 'drop',
+            :accept_eth0 => false,
+            :accept_eth1 => false
+          )
+        end
+
         it { is_expected.to contain_class('firewall') }
 
         it do
