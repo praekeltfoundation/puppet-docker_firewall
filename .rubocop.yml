@@ -9,8 +9,17 @@ AllCops:
 Style/HashSyntax:
   EnforcedStyle: hash_rockets
 
+Style/SpaceInsideHashLiteralBraces:
+  EnforcedStyle: no_space
+
 Style/TrailingCommaInLiteral:
   Enabled: false
 
 Style/WordArray:
+  Enabled: false
+
+Metrics/BlockLength:
+  Enabled: false
+
+Metrics/MethodLength:
   Enabled: false
