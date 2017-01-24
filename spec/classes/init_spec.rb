@@ -203,6 +203,15 @@ describe 'docker_firewall' do
             .with_jump('DOCKER')
         end
       end
+
+      describe 'with an extra bridge interface' do
+        let(:params) { {:bridge_ifaces => ['br-d108dbddb4c8']} }
+
+        it do
+          is_expected.to contain_docker_firewall__interface('br-d108dbddb4c8')
+        end
+        it { is_expected.to contain_docker_firewall__interface('docker0') }
+      end
     end
   end
 end
