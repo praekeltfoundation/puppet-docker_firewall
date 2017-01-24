@@ -3,7 +3,7 @@ require 'spec_helper'
 describe 'docker_firewall' do
   on_supported_os.each do |os, facts|
     context "on #{os}" do
-      let(:facts) { add_docker0(facts) }
+      let(:facts) { add_docker_iface facts }
 
       it { is_expected.to compile }
 
@@ -24,6 +24,8 @@ describe 'docker_firewall' do
         end
 
         it { is_expected.to contain_class('firewall') }
+
+        it { is_expected.to contain_docker_firewall__interface('docker0') }
 
         it do
           is_expected.to contain_firewallchain('PREROUTING:nat:IPv4')
@@ -75,18 +77,6 @@ describe 'docker_firewall' do
         end
 
         it do
-          is_expected.to contain_firewall(
-            '100 DOCKER chain, MASQUERADE docker bridge traffic not bound to '\
-            'docker bridge'
-          ).with_table('nat')
-            .with_chain('POSTROUTING')
-            .with_source('172.17.0.0/16')
-            .with_outiface('! docker0')
-            .with_proto('all')
-            .with_jump('MASQUERADE')
-        end
-
-        it do
           is_expected.to contain_firewallchain('DOCKER:nat:IPv4')
             .with_ensure('present')
         end
@@ -113,17 +103,6 @@ describe 'docker_firewall' do
         end
 
         it do
-          is_expected.to contain_firewall(
-            '101 accept docker0 traffic to other interfaces on FORWARD chain'
-          ).with_table('filter')
-            .with_chain('FORWARD')
-            .with_iniface('docker0')
-            .with_outiface('! docker0')
-            .with_proto('all')
-            .with_action('accept')
-        end
-
-        it do
           is_expected.to contain_firewallchain('DOCKER:filter:IPv4')
             .with_ensure('present')
         end
@@ -132,16 +111,6 @@ describe 'docker_firewall' do
           is_expected.to contain_firewallchain('DOCKER_INPUT:filter:IPv4')
             .with_ensure('present')
             .with_purge(true)
-        end
-
-        it do
-          is_expected.to contain_firewall(
-            '102 send FORWARD traffic for docker0 to DOCKER_INPUT chain'
-          ).with_table('filter')
-            .with_chain('FORWARD')
-            .with_outiface('docker0')
-            .with_proto('all')
-            .with_jump('DOCKER_INPUT')
         end
 
         it do
@@ -160,27 +129,6 @@ describe 'docker_firewall' do
             .with_ctstate(['RELATED', 'ESTABLISHED'])
             .with_proto('all')
             .with_action('accept')
-        end
-
-        it do
-          is_expected.to contain_firewall(
-            '100 accept traffic from docker0 DOCKER_INPUT chain'
-          ).with_table('filter')
-            .with_chain('DOCKER_INPUT')
-            .with_iniface('docker0')
-            .with_proto('all')
-            .with_action('accept')
-        end
-      end
-
-      describe "when facts aren't available for docker0" do
-        let(:facts) { facts }
-
-        it do
-          is_expected.not_to contain_firewall(
-            '100 DOCKER chain, MASQUERADE docker bridge traffic not bound to '\
-            'docker bridge'
-          )
         end
       end
 
@@ -254,6 +202,15 @@ describe 'docker_firewall' do
             .with_proto('all')
             .with_jump('DOCKER')
         end
+      end
+
+      describe 'with an extra bridge interface' do
+        let(:params) { {:bridge_ifaces => ['br-d108dbddb4c8']} }
+
+        it do
+          is_expected.to contain_docker_firewall__interface('br-d108dbddb4c8')
+        end
+        it { is_expected.to contain_docker_firewall__interface('docker0') }
       end
     end
   end

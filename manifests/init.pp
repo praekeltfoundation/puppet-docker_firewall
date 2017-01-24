@@ -9,6 +9,16 @@
 #
 # === Parameters
 #
+# [*bridge_ifaces*]
+#   A list of additional Docker network interfaces to set up firewall rules for.
+#   Rules will be set up for interfaces with these names as well as the
+#   interfaces listed in *default_ifaces*.
+#
+# [*default_ifaces*]
+#   The default Docker network interface names to set up firewall rules for.
+#   Generally, you should only need to adjust *bridge_ifaces*. Default:
+#   ['docker0'].
+#
 # [*prerouting_nat_purge_ignore*]
 #   A list of regexes to use when purging the PREROUTING chain in the nat table.
 #   Rules that match one or more of the regexes will not be deleted.
@@ -46,6 +56,9 @@
 #   Whether or not to accept connections to Docker containers from the eth1
 #   interface.
 class docker_firewall (
+  $bridge_ifaces                = [],
+  $default_ifaces               = ['docker0'],
+
   $prerouting_nat_purge_ignore  = [],
   $prerouting_nat_policy        = undef,
   $output_nat_purge_ignore      = [],
@@ -119,21 +132,6 @@ class docker_firewall (
     ignore => $final_postrouting_nat_purge_ignore,
     policy => $postrouting_nat_policy,
   }
-  if has_interface_with('docker0') {
-    # -A POSTROUTING -s 172.17.0.0/16 ! -o docker0 -j MASQUERADE
-    firewall { '100 DOCKER chain, MASQUERADE docker bridge traffic not bound to docker bridge':
-      table    => 'nat',
-      chain    => 'POSTROUTING',
-      source   => "${::network_docker0}/16",
-      outiface => '! docker0',
-      proto    => 'all',
-      jump     => 'MASQUERADE',
-    }
-  } else {
-    warning('The docker0 interface has not been detected by Facter yet. You \
-      may need to re-run Puppet and/or ensure that the Docker service is \
-      started.')
-  }
 
   # DOCKER - let Docker manage this chain completely
   firewallchain { 'DOCKER:nat:IPv4':
@@ -167,16 +165,6 @@ class docker_firewall (
     jump  => 'DOCKER-ISOLATION',
   }
 
-  # -A FORWARD -i docker0 ! -o docker0 -j ACCEPT
-  firewall { '101 accept docker0 traffic to other interfaces on FORWARD chain':
-    table    => 'filter',
-    chain    => 'FORWARD',
-    iniface  => 'docker0',
-    outiface => '! docker0',
-    proto    => 'all',
-    action   => 'accept',
-  }
-
   # DOCKER - let Docker manage this chain completely
   firewallchain { 'DOCKER:filter:IPv4':
     ensure => present,
@@ -186,15 +174,6 @@ class docker_firewall (
   firewallchain { 'DOCKER_INPUT:filter:IPv4':
     ensure => present,
     purge  => true,
-  }
-
-  # -A FORWARD -o docker0 -j DOCKER_INPUT
-  firewall { '102 send FORWARD traffic for docker0 to DOCKER_INPUT chain':
-    table    => 'filter',
-    chain    => 'FORWARD',
-    outiface => 'docker0',
-    proto    => 'all',
-    jump     => 'DOCKER_INPUT',
   }
 
   # This is a way to achieve "default DROP" for incoming traffic to the docker0
@@ -212,15 +191,6 @@ class docker_firewall (
     table   => 'filter',
     chain   => 'DOCKER_INPUT',
     ctstate => ['RELATED', 'ESTABLISHED'],
-    proto   => 'all',
-    action  => 'accept',
-  }
-
-  # -A DOCKER_INPUT -i docker0 -j ACCEPT
-  firewall { '100 accept traffic from docker0 DOCKER_INPUT chain':
-    table   => 'filter',
-    chain   => 'DOCKER_INPUT',
-    iniface => 'docker0',
     proto   => 'all',
     action  => 'accept',
   }
@@ -246,4 +216,7 @@ class docker_firewall (
       jump    => 'DOCKER',
     }
   }
+
+  $all_ifaces = concat($bridge_ifaces, $default_ifaces)
+  docker_firewall::interface { $all_ifaces: }
 }

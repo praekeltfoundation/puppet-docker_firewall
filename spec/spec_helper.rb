@@ -3,18 +3,20 @@ require 'puppetlabs_spec_helper/module_spec_helper'
 require 'rspec-puppet-facts'
 include RspecPuppetFacts
 
-# Add facts for the docker0 interface
-def add_docker0(facts)
-  interfaces_arr = facts[:interfaces].split(',')
-  interfaces_arr << 'docker0'
-  interfaces = interfaces_arr.sort.uniq.join(',')
+# Add facts for a Docker bridge interface
+def add_docker_iface(facts, name = 'docker0', params = {})
+  interface_params = {
+    :ipaddress => '172.17.0.1',
+    :macaddress => '02:42:41:0b:31:b8',
+    :mtu => '1500',
+    :netmask => '255.255.0.0',
+    :network => '172.17.0.0'
+  }.merge(params)
+  new_facts = Hash[interface_params.map { |k, v| ["#{k}_#{name}".to_sym, v] }]
 
-  facts.merge(
-    :interfaces => interfaces,
-    :ipaddress_docker0 => '172.17.0.1',
-    :macaddress_docker0 => '02:42:41:0b:31:b8',
-    :mtu_docker0 => '1500',
-    :netmask_docker0 => '255.255.0.0',
-    :network_docker0 => '172.17.0.0'
-  )
+  interfaces = facts[:interfaces].split(',')
+  interfaces << name
+  new_facts[:interfaces] = interfaces.sort.uniq.join(',')
+
+  facts.merge(new_facts)
 end
