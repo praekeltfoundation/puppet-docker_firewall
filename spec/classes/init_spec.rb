@@ -168,6 +168,50 @@ describe 'docker_firewall' do
           )
         end
       end
+
+      describe 'with custom purge and policy parameters' do
+        let(:params) do
+          {
+            :prerouting_nat_purge_ignore => ['foobar'],
+            :prerouting_nat_policy => 'drop',
+            :output_nat_purge_ignore => ['foobaz'],
+            :output_nat_policy => 'reject',
+            :postrouting_nat_purge_ignore => ['barbaz'],
+            :postrouting_nat_policy => 'drop',
+            :forward_filter_purge_ignore => ['barfoo'],
+            :forward_filter_policy => 'accept'
+          }
+        end
+
+        it do
+          is_expected.to contain_firewallchain('PREROUTING:nat:IPv4')
+            .with_ignore(['foobar'])
+            .with_policy('drop')
+        end
+
+        it do
+          is_expected.to contain_firewallchain('OUTPUT:nat:IPv4')
+            .with_ignore(['foobaz'])
+            .with_policy('reject')
+        end
+
+        it do
+          is_expected.to contain_firewallchain('POSTROUTING:nat:IPv4')
+            .with_ignore(
+              [
+                '^-A POSTROUTING -s (?<source>(?:[0-9]{1,3}\.){3}[0-9]{1,3})\/'\
+                '32 -d (\g<source>)\/32 .* -j MASQUERADE$',
+                'barbaz'
+              ]
+            ).with_policy('drop')
+        end
+
+        it do
+          is_expected.to contain_firewallchain('FORWARD:filter:IPv4')
+            .with_ignore(['barfoo'])
+            .with_policy('accept')
+        end
+      end
     end
   end
 end
