@@ -1,8 +1,8 @@
-# == Define: docker_firewall::interface
+# == Define: docker_firewall::bridge
 #
 # Set up firewall rules specifically for a certain bridge interface. The bridge
 # interface name should be the title (or name) of the resource.
-define docker_firewall::interface () {
+define docker_firewall::bridge () {
   if has_interface_with($name) {
     # -A POSTROUTING -s 172.17.0.0/16 ! -o docker0 -j MASQUERADE
     $source = getvar("::network_${name}")

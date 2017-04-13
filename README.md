@@ -58,9 +58,19 @@ You should ensure that the `docker_firewall` class always runs after the Docker 
 Using this module at the same time as you install Docker may require a second run of Puppet as Facter will need a chance to pick up details about Docker's bridge interface (`docker0`). In order to set up the firewall, the `$::network_docker0` fact must be set.
 
 ## Custom bridge interfaces
-When setting up a custom Docker bridge network (available since Docker 1.9.0), extra iptables rules are needed for each network. It's possible to define extra interfaces using the `$bridge_ifaces` parameter for the `docker_firewall` class or by defining `docker_firewall::interface` resources.
+When setting up a custom Docker bridge network (available since Docker 1.9.0), extra iptables rules are needed for each network. It's possible to define extra bridge interfaces using the `$bridges` parameter for the `docker_firewall` class or by defining `docker_firewall::bridge` resources.
 
-**NOTE:** This system is currently quite *fragile*. The names of the network interfaces created by Docker when setting up custom bridge networks are *not* predictable (e.g. names like "`br-d108dbddb4c8`"). If you *know* the interface name and *know* that it is not going to change then go ahead and use this. Ideally, some Puppet module would export facts about the Docker interface names and we could pick them up.
+**NOTE:** You must specify the _actual_ bridge interface name when creating the network, for example:
+```
+docker network create -d bridge -o com.docker.network.bridge.name=br-mynetwork mynetwork
+```
+In this example we are interested in the name `br-mynetwork` which is the name of the interface that Docker creates for the network. This is the name that should be used for the `docker_firewall::bridge` resource.
+
+If the `com.docker.network.bridge.name` option is not specified when the network is created, Docker will generate an interface name consisting of the hash identifier for the network, for example `br-d108dbddb4c8`.
+
+This system currently doesn't support any non-default options such as internal mode (`--internal`) or hairpin-mode routing (`--userland-proxy=false`).
+
+Ideally, some Puppet module would export facts about the Docker interface names and we could pick them up and configure the firewall rules with less input from the user.
 
 ## Credits
 The `DOCKER_INPUT` chain was inspired by the idea of a `PRE_DOCKER` chain as described in [this blog post](http://rudijs.github.io/2015-07/docker-restricting-container-access-with-iptables/) by Rudi Starcevic.
