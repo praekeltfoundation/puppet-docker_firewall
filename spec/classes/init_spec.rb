@@ -205,7 +205,7 @@ describe 'docker_firewall' do
       end
 
       describe 'with an extra bridge interface' do
-        let(:params) { {:bridges => ['br-d108dbddb4c8']} }
+        let(:params) { {:bridges => {'br-d108dbddb4c8' => {}}} }
 
         it do
           is_expected.to contain_docker_firewall__bridge('br-d108dbddb4c8')

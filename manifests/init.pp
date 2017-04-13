@@ -56,8 +56,8 @@
 #   Whether or not to accept connections to Docker containers from the eth1
 #   interface.
 class docker_firewall (
-  $bridges                      = [],
-  $default_bridges              = ['docker0'],
+  $bridges                      = {},
+  $default_bridges              = {'docker0' => {}},
 
   $prerouting_nat_purge_ignore  = [],
   $prerouting_nat_policy        = undef,
@@ -71,6 +71,8 @@ class docker_firewall (
   $accept_eth0                  = false,
   $accept_eth1                  = false,
 ) {
+  validate_hash($bridges)
+  validate_hash($default_bridges)
   validate_array($prerouting_nat_purge_ignore)
   validate_array($output_nat_purge_ignore)
   validate_array($postrouting_nat_purge_ignore)
@@ -217,6 +219,6 @@ class docker_firewall (
     }
   }
 
-  $all_bridges = concat($bridges, $default_bridges)
-  docker_firewall::bridge { $all_bridges: }
+  $all_bridges = merge($default_bridges, $bridges)
+  create_resources(docker_firewall::bridge, $all_bridges)
 }
