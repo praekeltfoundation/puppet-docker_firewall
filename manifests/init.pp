@@ -10,14 +10,14 @@
 # === Parameters
 #
 # [*bridges*]
-#   A list of additional Docker network interfaces to set up firewall rules for.
+#   A hash of additional Docker network interfaces to set up firewall rules for.
 #   Rules will be set up for interfaces with these names as well as the
-#   interfaces listed in *default_bridges*.
+#   interfaces listed in the *default_bridges* parameter.
 #
 # [*default_bridges*]
-#   The default Docker network interface names to set up firewall rules for.
-#   Generally, you should only need to adjust *bridges*. By default this
-#   just includes the 'docker0' bridge interface.
+#   The default Docker network interfaces to set up firewall rules for.
+#   Generally, you should only need to adjust the *bridges* parameter. By
+#   default this just includes the 'docker0' bridge interface.
 #
 # [*prerouting_nat_purge_ignore*]
 #   A list of regexes to use when purging the PREROUTING chain in the nat table.

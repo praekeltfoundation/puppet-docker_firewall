@@ -64,7 +64,9 @@ When setting up a custom Docker bridge network (available since Docker 1.9.0), e
 ```
 docker network create -d bridge -o com.docker.network.bridge.name=br-mynetwork mynetwork
 ```
-In this example we are interested in the name `br-mynetwork` which is the name of the interface that Docker creates for the network. If not specified, Docker will generate an interface name consisting of the hash identifier for the network, for example `br-d108dbddb4c8`.
+In this example we are interested in the name `br-mynetwork` which is the name of the interface that Docker creates for the network. This is the name that should be used for the `docker_firewall::bridge` resource.
+
+If the `com.docker.network.bridge.name` option is not specified when the network is created, Docker will generate an interface name consisting of the hash identifier for the network, for example `br-d108dbddb4c8`.
 
 This system currently doesn't support any non-default options such as internal mode (`--internal`) or hairpin-mode routing (`--userland-proxy=false`).
 
