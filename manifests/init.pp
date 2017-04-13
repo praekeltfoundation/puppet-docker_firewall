@@ -9,12 +9,12 @@
 #
 # === Parameters
 #
-# [*bridge_ifaces*]
+# [*bridges*]
 #   A list of additional Docker network interfaces to set up firewall rules for.
 #   Rules will be set up for interfaces with these names as well as the
 #   interfaces listed in *default_ifaces*.
 #
-# [*default_ifaces*]
+# [*default_bridges*]
 #   The default Docker network interface names to set up firewall rules for.
 #   Generally, you should only need to adjust *bridge_ifaces*. Default:
 #   ['docker0'].
@@ -56,8 +56,8 @@
 #   Whether or not to accept connections to Docker containers from the eth1
 #   interface.
 class docker_firewall (
-  $bridge_ifaces                = [],
-  $default_ifaces               = ['docker0'],
+  $bridges                      = [],
+  $default_bridges              = ['docker0'],
 
   $prerouting_nat_purge_ignore  = [],
   $prerouting_nat_policy        = undef,
@@ -217,6 +217,6 @@ class docker_firewall (
     }
   }
 
-  $all_ifaces = concat($bridge_ifaces, $default_ifaces)
-  docker_firewall::interface { $all_ifaces: }
+  $all_bridges = concat($bridges, $default_bridges)
+  docker_firewall::bridge { $all_bridges: }
 }

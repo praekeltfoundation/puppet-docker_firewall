@@ -25,7 +25,7 @@ describe 'docker_firewall' do
 
         it { is_expected.to contain_class('firewall') }
 
-        it { is_expected.to contain_docker_firewall__interface('docker0') }
+        it { is_expected.to contain_docker_firewall__bridge('docker0') }
 
         it do
           is_expected.to contain_firewallchain('PREROUTING:nat:IPv4')
@@ -205,12 +205,12 @@ describe 'docker_firewall' do
       end
 
       describe 'with an extra bridge interface' do
-        let(:params) { {:bridge_ifaces => ['br-d108dbddb4c8']} }
+        let(:params) { {:bridges => ['br-d108dbddb4c8']} }
 
         it do
-          is_expected.to contain_docker_firewall__interface('br-d108dbddb4c8')
+          is_expected.to contain_docker_firewall__bridge('br-d108dbddb4c8')
         end
-        it { is_expected.to contain_docker_firewall__interface('docker0') }
+        it { is_expected.to contain_docker_firewall__bridge('docker0') }
       end
     end
   end

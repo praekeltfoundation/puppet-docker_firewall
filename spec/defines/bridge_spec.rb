@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-describe 'docker_firewall::interface' do
+describe 'docker_firewall::bridge' do
   on_supported_os.each do |os, facts|
     context "on #{os}" do
       let(:title) { 'docker0' }
