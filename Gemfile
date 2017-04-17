@@ -10,5 +10,5 @@ group :test do
   gem 'puppetlabs_spec_helper'
   gem 'rspec-puppet-facts'
 
-  gem 'rubocop', '~> 0.47.1'
+  gem 'rubocop', '~> 0.48.1'
 end
