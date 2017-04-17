@@ -55,6 +55,12 @@
 # [*accept_eth1*]
 #   Whether or not to accept connections to Docker containers from the eth1
 #   interface.
+#
+# [*accept_rules*]
+#   A hash of firewall resources to create. These rules will apply to the
+#   DOCKER_INPUT chain and jump to the DOCKER chain so the connection is
+#   accepted if it is really headed for a container. All other parameters for
+#   the firewall resource can be set by the user.
 class docker_firewall (
   Hash[String, Hash] $bridges                      = {},
   Hash[String, Hash] $default_bridges              = {'docker0' => {}},
@@ -68,8 +74,9 @@ class docker_firewall (
   Variant[String, Array[String]] $forward_filter_purge_ignore  = [],
   Optional[String]               $forward_filter_policy        = 'drop',
 
-  Boolean $accept_eth0                  = false,
-  Boolean $accept_eth1                  = false,
+  Boolean            $accept_eth0  = false,
+  Boolean            $accept_eth1  = false,
+  Hash[String, Hash] $accept_rules = {},
 ) {
   include firewall
 
@@ -211,6 +218,15 @@ class docker_firewall (
       iniface => 'eth1',
       proto   => 'all',
       jump    => 'DOCKER',
+    }
+  }
+
+  $accept_rules.each |$name, $rule| {
+    firewall { $name:
+      table => 'filter',
+      chain => 'DOCKER_INPUT',
+      jump  => 'DOCKER',
+      *     => $rule,
     }
   }
 

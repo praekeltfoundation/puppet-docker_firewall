@@ -241,6 +241,28 @@ describe 'docker_firewall' do
         end
       end
 
+      describe 'when a custom accept rule is provided' do
+        let(:params) do
+          {
+            :accept_rules => {
+              '200 accept port 5000 tcp traffic' => {
+                'dport' => 5000,
+                'proto' => 'tcp',
+              }
+            }
+          }
+        end
+
+        it do
+          is_expected.to contain_firewall('200 accept port 5000 tcp traffic')
+            .with_dport(5000)
+            .with_proto('tcp')
+            .with_table('filter')
+            .with_chain('DOCKER_INPUT')
+            .with_jump('DOCKER')
+        end
+      end
+
       describe 'with an extra bridge interface' do
         let(:params) { {:bridges => {'br-d108dbddb4c8' => {}}} }
 
