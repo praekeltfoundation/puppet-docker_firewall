@@ -176,6 +176,43 @@ describe 'docker_firewall' do
         end
       end
 
+      describe 'with custom string ignore policies' do
+        let(:params) do
+          {
+            :prerouting_nat_purge_ignore => 'foobar',
+            :output_nat_purge_ignore => 'foobaz',
+            :postrouting_nat_purge_ignore => 'barbaz',
+            :forward_filter_purge_ignore => 'barfoo',
+          }
+        end
+
+        it do
+          is_expected.to contain_firewallchain('PREROUTING:nat:IPv4')
+            .with_ignore('foobar')
+        end
+
+        it do
+          is_expected.to contain_firewallchain('OUTPUT:nat:IPv4')
+            .with_ignore('foobaz')
+        end
+
+        it do
+          is_expected.to contain_firewallchain('POSTROUTING:nat:IPv4')
+            .with_ignore(
+              [
+                '^-A POSTROUTING -s (?<source>(?:[0-9]{1,3}\.){3}[0-9]{1,3})\/'\
+                '32 -d (\g<source>)\/32 .* -j MASQUERADE$',
+                'barbaz'
+              ]
+            )
+        end
+
+        it do
+          is_expected.to contain_firewallchain('FORWARD:filter:IPv4')
+            .with_ignore('barfoo')
+        end
+      end
+
       describe 'when accept_eth0 is true' do
         let(:params) { {:accept_eth0 => true} }
 
