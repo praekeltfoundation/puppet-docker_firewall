@@ -56,30 +56,21 @@
 #   Whether or not to accept connections to Docker containers from the eth1
 #   interface.
 class docker_firewall (
-  $bridges                      = {},
-  $default_bridges              = {'docker0' => {}},
+  Hash[String, Hash] $bridges                      = {},
+  Hash[String, Hash] $default_bridges              = {'docker0' => {}},
 
-  $prerouting_nat_purge_ignore  = [],
-  $prerouting_nat_policy        = undef,
-  $output_nat_purge_ignore      = [],
-  $output_nat_policy            = undef,
-  $postrouting_nat_purge_ignore = [],
-  $postrouting_nat_policy       = undef,
-  $forward_filter_purge_ignore  = [],
-  $forward_filter_policy        = 'drop',
+  Variant[String, Array[String]] $prerouting_nat_purge_ignore  = [],
+  Optional[String]               $prerouting_nat_policy        = undef,
+  Variant[String, Array[String]] $output_nat_purge_ignore      = [],
+  Optional[String]               $output_nat_policy            = undef,
+  Variant[String, Array[String]] $postrouting_nat_purge_ignore = [],
+  Optional[String]               $postrouting_nat_policy       = undef,
+  Variant[String, Array[String]] $forward_filter_purge_ignore  = [],
+  Optional[String]               $forward_filter_policy        = 'drop',
 
-  $accept_eth0                  = false,
-  $accept_eth1                  = false,
+  Boolean $accept_eth0                  = false,
+  Boolean $accept_eth1                  = false,
 ) {
-  validate_hash($bridges)
-  validate_hash($default_bridges)
-  validate_array($prerouting_nat_purge_ignore)
-  validate_array($output_nat_purge_ignore)
-  validate_array($postrouting_nat_purge_ignore)
-  validate_array($forward_filter_purge_ignore)
-  validate_bool($accept_eth0)
-  validate_bool($accept_eth1)
-
   include firewall
 
   # nat table
@@ -127,7 +118,11 @@ class docker_firewall (
   $default_postrouting_nat_purge_ignore = [
     '^-A POSTROUTING -s (?<source>(?:[0-9]{1,3}\.){3}[0-9]{1,3})\/32 -d (\g<source>)\/32 .* -j MASQUERADE$',
   ]
-  $final_postrouting_nat_purge_ignore = concat($default_postrouting_nat_purge_ignore, $postrouting_nat_purge_ignore)
+  $_postrouting_nat_purge_ignore = $postrouting_nat_purge_ignore ? {
+    String => [$postrouting_nat_purge_ignore],
+    Array  => $postrouting_nat_purge_ignore,
+  }
+  $final_postrouting_nat_purge_ignore = concat($default_postrouting_nat_purge_ignore, $_postrouting_nat_purge_ignore)
   firewallchain { 'POSTROUTING:nat:IPv4':
     ensure => present,
     purge  => true,
