@@ -3,11 +3,12 @@ source 'https://rubygems.org'
 group :test do
   gem 'rake'
 
-  puppetversion = ENV.key?('PUPPET_VERSION') ? "#{ENV['PUPPET_VERSION']}" : ['>= 3.0.0','< 4.0']
-  gem 'puppet', puppetversion
+  gem 'puppet', ENV['PUPPET_VERSION'] || '~> 4.5'
 
   gem 'librarian-puppet'
   gem 'metadata-json-lint'
   gem 'puppetlabs_spec_helper'
   gem 'rspec-puppet-facts'
+
+  gem 'rubocop', '~> 0.48.1'
 end

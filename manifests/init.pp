@@ -9,6 +9,16 @@
 #
 # === Parameters
 #
+# [*bridges*]
+#   A hash of additional Docker network interfaces to set up firewall rules for.
+#   Rules will be set up for interfaces with these names as well as the
+#   interfaces listed in the *default_bridges* parameter.
+#
+# [*default_bridges*]
+#   The default Docker network interfaces to set up firewall rules for.
+#   Generally, you should only need to adjust the *bridges* parameter. By
+#   default this just includes the 'docker0' bridge interface.
+#
 # [*prerouting_nat_purge_ignore*]
 #   A list of regexes to use when purging the PREROUTING chain in the nat table.
 #   Rules that match one or more of the regexes will not be deleted.
@@ -28,7 +38,8 @@
 #   table. Rules that match one or more of the regexes will not be deleted.
 #
 # [*output_nat_policy*]
-#   The default policy for the POSTROUTING chain in the nat table.
+#   The default policy for the POSTROUTING chain in the nat table. The default
+#   is 'drop'.
 #
 # [*forward_filter_purge_ignore*]
 #   A list of regexes to use when purging the OUTPUT chain in the nat table.
@@ -37,33 +48,26 @@
 # [*output_nat_policy*]
 #   The default policy for the OUTPUT chain in the nat table.
 #
-# [*accept_eth0*]
-#   Whether or not to accept connections to Docker containers from the eth0
-#   interface.
-#
-# [*accept_eth1*]
-#   Whether or not to accept connections to Docker containers from the eth1
-#   interface.
+# [*accept_rules*]
+#   A hash of firewall resources to create. These rules will apply to the
+#   DOCKER_INPUT chain and jump to the DOCKER chain so the connection is
+#   accepted if it is really headed for a container. All other parameters for
+#   the firewall resource can be set by the user.
 class docker_firewall (
-  $prerouting_nat_purge_ignore  = [],
-  $prerouting_nat_policy        = undef,
-  $output_nat_purge_ignore      = [],
-  $output_nat_policy            = undef,
-  $postrouting_nat_purge_ignore = [],
-  $postrouting_nat_policy       = undef,
-  $forward_filter_purge_ignore  = [],
-  $forward_filter_policy        = undef,
+  Hash[String, Hash] $bridges                      = {},
+  Hash[String, Hash] $default_bridges              = {'docker0' => {}},
 
-  $accept_eth0                  = false,
-  $accept_eth1                  = false,
+  Variant[String, Array[String]] $prerouting_nat_purge_ignore  = [],
+  Optional[String]               $prerouting_nat_policy        = undef,
+  Variant[String, Array[String]] $output_nat_purge_ignore      = [],
+  Optional[String]               $output_nat_policy            = undef,
+  Variant[String, Array[String]] $postrouting_nat_purge_ignore = [],
+  Optional[String]               $postrouting_nat_policy       = undef,
+  Variant[String, Array[String]] $forward_filter_purge_ignore  = [],
+  Optional[String]               $forward_filter_policy        = 'drop',
+
+  Hash[String, Hash] $accept_rules = {},
 ) {
-  validate_array($prerouting_nat_purge_ignore)
-  validate_array($output_nat_purge_ignore)
-  validate_array($postrouting_nat_purge_ignore)
-  validate_array($forward_filter_purge_ignore)
-  validate_bool($accept_eth0)
-  validate_bool($accept_eth1)
-
   include firewall
 
   # nat table
@@ -111,27 +115,16 @@ class docker_firewall (
   $default_postrouting_nat_purge_ignore = [
     '^-A POSTROUTING -s (?<source>(?:[0-9]{1,3}\.){3}[0-9]{1,3})\/32 -d (\g<source>)\/32 .* -j MASQUERADE$',
   ]
-  $final_postrouting_nat_purge_ignore = concat($default_postrouting_nat_purge_ignore, $postrouting_nat_purge_ignore)
+  $_postrouting_nat_purge_ignore = $postrouting_nat_purge_ignore ? {
+    String => [$postrouting_nat_purge_ignore],
+    Array  => $postrouting_nat_purge_ignore,
+  }
+  $final_postrouting_nat_purge_ignore = concat($default_postrouting_nat_purge_ignore, $_postrouting_nat_purge_ignore)
   firewallchain { 'POSTROUTING:nat:IPv4':
     ensure => present,
     purge  => true,
     ignore => $final_postrouting_nat_purge_ignore,
     policy => $postrouting_nat_policy,
-  }
-  if has_interface_with('docker0') {
-    # -A POSTROUTING -s 172.17.0.0/16 ! -o docker0 -j MASQUERADE
-    firewall { '100 DOCKER chain, MASQUERADE docker bridge traffic not bound to docker bridge':
-      table    => 'nat',
-      chain    => 'POSTROUTING',
-      source   => "${::network_docker0}/16",
-      outiface => '! docker0',
-      proto    => 'all',
-      jump     => 'MASQUERADE',
-    }
-  } else {
-    warning('The docker0 interface has not been detected by Facter yet. You \
-      may need to re-run Puppet and/or ensure that the Docker service is \
-      started.')
   }
 
   # DOCKER - let Docker manage this chain completely
@@ -148,14 +141,22 @@ class docker_firewall (
     ignore => $forward_filter_purge_ignore,
     policy => $forward_filter_policy,
   }
-  # -A FORWARD -i docker0 ! -o docker0 -j ACCEPT
-  firewall { '100 accept docker0 traffic to other interfaces on FORWARD chain':
-    table    => 'filter',
-    chain    => 'FORWARD',
-    iniface  => 'docker0',
-    outiface => '! docker0',
-    proto    => 'all',
-    action   => 'accept',
+
+  # The DOCKER-ISOLATION chain is new to Docker 1.10. Its purpose is to isolate
+  # different Docker bridge networks. Docker adds a rule as the first rule to
+  # the FORWARD chain that sends all traffic through the DOCKER-ISOLATION chain.
+  # The DOCKER-ISOLATION chain should only ever contain DROP rules so it should
+  # be safe to keep Docker's behaviour with regards to this chain.
+  # DOCKER-ISOLATION - let Docker manage this chain completely
+  firewallchain { 'DOCKER-ISOLATION:filter:IPv4':
+    ensure => present,
+  }
+  # -A FORWARD -j DOCKER-ISOLATION
+  firewall { '100 send FORWARD traffic to DOCKER-ISOLATION chain':
+    table => 'filter',
+    chain => 'FORWARD',
+    proto => 'all',
+    jump  => 'DOCKER-ISOLATION',
   }
 
   # DOCKER - let Docker manage this chain completely
@@ -167,15 +168,6 @@ class docker_firewall (
   firewallchain { 'DOCKER_INPUT:filter:IPv4':
     ensure => present,
     purge  => true,
-  }
-
-  # -A FORWARD -o docker0 -j DOCKER_INPUT
-  firewall { '101 send FORWARD traffic for docker0 to DOCKER_INPUT chain':
-    table    => 'filter',
-    chain    => 'FORWARD',
-    outiface => 'docker0',
-    proto    => 'all',
-    jump     => 'DOCKER_INPUT',
   }
 
   # This is a way to achieve "default DROP" for incoming traffic to the docker0
@@ -197,34 +189,15 @@ class docker_firewall (
     action  => 'accept',
   }
 
-  # -A DOCKER_INPUT -i docker0 -j ACCEPT
-  firewall { '100 accept traffic from docker0 DOCKER_INPUT chain':
-    table   => 'filter',
-    chain   => 'DOCKER_INPUT',
-    iniface => 'docker0',
-    proto   => 'all',
-    action  => 'accept',
-  }
-
-  if $accept_eth0 {
-    # -A DOCKER_INPUT -i eth0 -j DOCKER
-    firewall { '200 DOCKER chain, DOCKER_INPUT traffic from eth0':
-      table   => 'filter',
-      chain   => 'DOCKER_INPUT',
-      iniface => 'eth0',
-      proto   => 'all',
-      jump    => 'DOCKER',
+  $accept_rules.each |$name, $rule| {
+    firewall { $name:
+      table => 'filter',
+      chain => 'DOCKER_INPUT',
+      jump  => 'DOCKER',
+      *     => $rule,
     }
   }
 
-  if $accept_eth1 {
-    # -A DOCKER_INPUT -i eth1 -j DOCKER
-    firewall { '200 DOCKER chain, DOCKER_INPUT traffic from eth1':
-      table   => 'filter',
-      chain   => 'DOCKER_INPUT',
-      iniface => 'eth1',
-      proto   => 'all',
-      jump    => 'DOCKER',
-    }
-  }
+  $all_bridges = merge($default_bridges, $bridges)
+  create_resources(docker_firewall::bridge, $all_bridges)
 }

@@ -1,6 +1,6 @@
 {
   "name": "praekeltfoundation-docker_firewall",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": "Jamie Hewland",
   "summary": "Simplifies management of iptables rules when running Docker",
   "license": "BSD-3-Clause",
@@ -10,20 +10,26 @@
   "dependencies": [
     {
       "name": "puppetlabs/stdlib",
-      "version_requirement": ">= 4.2.0"
+      "version_requirement": ">= 4.2.0 < 5.0.0"
     },
     {
       "name": "puppetlabs/firewall",
-      "version_requirement": ">= 1.7.0"
+      "version_requirement": ">= 1.7.0 < 2.0.0"
     }
   ],
   "requirements": [
     {
       "name": "puppet",
-      "version_requirement": ">=3.4.0 < 4.0.0"
+      "version_requirement": ">= 4.5.0"
     }
   ],
   "operatingsystem_support": [
+    {
+      "operatingsystem": "Debian",
+      "operatingsystemrelease": [
+        "8"
+      ]
+    },
     {
       "operatingsystem": "Ubuntu",
       "operatingsystemrelease": [
