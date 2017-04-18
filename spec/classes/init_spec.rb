@@ -17,7 +17,7 @@ describe 'docker_firewall' do
             :postrouting_nat_purge_ignore => [],
             :postrouting_nat_policy => nil,
             :forward_filter_purge_ignore => [],
-            :forward_filter_policy => 'drop',
+            :forward_filter_policy => 'drop'
           )
         end
 
