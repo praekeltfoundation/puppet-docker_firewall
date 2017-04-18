@@ -17,9 +17,7 @@ describe 'docker_firewall' do
             :postrouting_nat_purge_ignore => [],
             :postrouting_nat_policy => nil,
             :forward_filter_purge_ignore => [],
-            :forward_filter_policy => 'drop',
-            :accept_eth0 => false,
-            :accept_eth1 => false
+            :forward_filter_policy => 'drop'
           )
         end
 
@@ -176,30 +174,61 @@ describe 'docker_firewall' do
         end
       end
 
-      describe 'when accept_eth0 is true' do
-        let(:params) { {:accept_eth0 => true} }
+      describe 'with custom string ignore policies' do
+        let(:params) do
+          {
+            :prerouting_nat_purge_ignore => 'foobar',
+            :output_nat_purge_ignore => 'foobaz',
+            :postrouting_nat_purge_ignore => 'barbaz',
+            :forward_filter_purge_ignore => 'barfoo',
+          }
+        end
 
         it do
-          is_expected.to contain_firewall(
-            '200 DOCKER chain, DOCKER_INPUT traffic from eth0'
-          ).with_table('filter')
-            .with_chain('DOCKER_INPUT')
-            .with_iniface('eth0')
-            .with_proto('all')
-            .with_jump('DOCKER')
+          is_expected.to contain_firewallchain('PREROUTING:nat:IPv4')
+            .with_ignore('foobar')
+        end
+
+        it do
+          is_expected.to contain_firewallchain('OUTPUT:nat:IPv4')
+            .with_ignore('foobaz')
+        end
+
+        it do
+          is_expected.to contain_firewallchain('POSTROUTING:nat:IPv4')
+            .with_ignore(
+              [
+                '^-A POSTROUTING -s (?<source>(?:[0-9]{1,3}\.){3}[0-9]{1,3})\/'\
+                '32 -d (\g<source>)\/32 .* -j MASQUERADE$',
+                'barbaz'
+              ]
+            )
+        end
+
+        it do
+          is_expected.to contain_firewallchain('FORWARD:filter:IPv4')
+            .with_ignore('barfoo')
         end
       end
 
-      describe 'when accept_eth1 is true' do
-        let(:params) { {:accept_eth1 => true} }
+      describe 'when a custom accept rule is provided' do
+        let(:params) do
+          {
+            :accept_rules => {
+              '200 accept port 5000 tcp traffic' => {
+                'dport' => 5000,
+                'proto' => 'tcp',
+              }
+            }
+          }
+        end
 
         it do
-          is_expected.to contain_firewall(
-            '200 DOCKER chain, DOCKER_INPUT traffic from eth1'
-          ).with_table('filter')
+          is_expected.to contain_firewall('200 accept port 5000 tcp traffic')
+            .with_dport(5000)
+            .with_proto('tcp')
+            .with_table('filter')
             .with_chain('DOCKER_INPUT')
-            .with_iniface('eth1')
-            .with_proto('all')
             .with_jump('DOCKER')
         end
       end

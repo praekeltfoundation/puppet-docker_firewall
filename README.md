@@ -10,8 +10,13 @@ The `docker_firewall` class aims to make running custom iptables rules alongside
 ## Usage
 ```puppet
 class { 'docker_firewall':
-  accept_eth1 => true,
-  subscribe   => Service['docker'],
+  accept_rules => {
+    '200 accept eth1 traffic' => {
+      'iniface' => 'eth1',
+      'proto'   => 'all',
+    },
+  },
+  subscribe    => Service['docker'],
 }
 ```
 This sets up the Docker iptables rules and allows access to containers from connections incoming from the `eth1` interface, while dropping external connections from other interfaces.
@@ -43,6 +48,14 @@ For example, for a regular input rule that allows connections from
 To allow access to Docker containers you would do:
 ```
 -A DOCKER_INPUT -s 192.168.0.1/32 -j DOCKER
+```
+
+The `$accept_rules` parameter for the main `docker_firewall` class provides an easy way to set up rules to accept connections to Docker containers. This parameter takes a hash of `firewall` resources to create, and defaults those rules to be in the `DOCKER_INPUT` chain and jump to the `DOCKER` chain. This parameter is probably best set using Hiera, for example:
+```yaml
+docker_firewall::accept_rules:
+  200 accept all traffic from 192.168.0.1/32:
+    source: 192.168.0.1/32
+    proto: all
 ```
 
 ## Docker daemon restarts

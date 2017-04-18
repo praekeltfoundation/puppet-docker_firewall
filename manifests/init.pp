@@ -48,38 +48,26 @@
 # [*output_nat_policy*]
 #   The default policy for the OUTPUT chain in the nat table.
 #
-# [*accept_eth0*]
-#   Whether or not to accept connections to Docker containers from the eth0
-#   interface.
-#
-# [*accept_eth1*]
-#   Whether or not to accept connections to Docker containers from the eth1
-#   interface.
+# [*accept_rules*]
+#   A hash of firewall resources to create. These rules will apply to the
+#   DOCKER_INPUT chain and jump to the DOCKER chain so the connection is
+#   accepted if it is really headed for a container. All other parameters for
+#   the firewall resource can be set by the user.
 class docker_firewall (
-  $bridges                      = {},
-  $default_bridges              = {'docker0' => {}},
+  Hash[String, Hash] $bridges                      = {},
+  Hash[String, Hash] $default_bridges              = {'docker0' => {}},
 
-  $prerouting_nat_purge_ignore  = [],
-  $prerouting_nat_policy        = undef,
-  $output_nat_purge_ignore      = [],
-  $output_nat_policy            = undef,
-  $postrouting_nat_purge_ignore = [],
-  $postrouting_nat_policy       = undef,
-  $forward_filter_purge_ignore  = [],
-  $forward_filter_policy        = 'drop',
+  Variant[String, Array[String]] $prerouting_nat_purge_ignore  = [],
+  Optional[String]               $prerouting_nat_policy        = undef,
+  Variant[String, Array[String]] $output_nat_purge_ignore      = [],
+  Optional[String]               $output_nat_policy            = undef,
+  Variant[String, Array[String]] $postrouting_nat_purge_ignore = [],
+  Optional[String]               $postrouting_nat_policy       = undef,
+  Variant[String, Array[String]] $forward_filter_purge_ignore  = [],
+  Optional[String]               $forward_filter_policy        = 'drop',
 
-  $accept_eth0                  = false,
-  $accept_eth1                  = false,
+  Hash[String, Hash] $accept_rules = {},
 ) {
-  validate_hash($bridges)
-  validate_hash($default_bridges)
-  validate_array($prerouting_nat_purge_ignore)
-  validate_array($output_nat_purge_ignore)
-  validate_array($postrouting_nat_purge_ignore)
-  validate_array($forward_filter_purge_ignore)
-  validate_bool($accept_eth0)
-  validate_bool($accept_eth1)
-
   include firewall
 
   # nat table
@@ -127,7 +115,11 @@ class docker_firewall (
   $default_postrouting_nat_purge_ignore = [
     '^-A POSTROUTING -s (?<source>(?:[0-9]{1,3}\.){3}[0-9]{1,3})\/32 -d (\g<source>)\/32 .* -j MASQUERADE$',
   ]
-  $final_postrouting_nat_purge_ignore = concat($default_postrouting_nat_purge_ignore, $postrouting_nat_purge_ignore)
+  $_postrouting_nat_purge_ignore = $postrouting_nat_purge_ignore ? {
+    String => [$postrouting_nat_purge_ignore],
+    Array  => $postrouting_nat_purge_ignore,
+  }
+  $final_postrouting_nat_purge_ignore = concat($default_postrouting_nat_purge_ignore, $_postrouting_nat_purge_ignore)
   firewallchain { 'POSTROUTING:nat:IPv4':
     ensure => present,
     purge  => true,
@@ -197,25 +189,12 @@ class docker_firewall (
     action  => 'accept',
   }
 
-  if $accept_eth0 {
-    # -A DOCKER_INPUT -i eth0 -j DOCKER
-    firewall { '200 DOCKER chain, DOCKER_INPUT traffic from eth0':
-      table   => 'filter',
-      chain   => 'DOCKER_INPUT',
-      iniface => 'eth0',
-      proto   => 'all',
-      jump    => 'DOCKER',
-    }
-  }
-
-  if $accept_eth1 {
-    # -A DOCKER_INPUT -i eth1 -j DOCKER
-    firewall { '200 DOCKER chain, DOCKER_INPUT traffic from eth1':
-      table   => 'filter',
-      chain   => 'DOCKER_INPUT',
-      iniface => 'eth1',
-      proto   => 'all',
-      jump    => 'DOCKER',
+  $accept_rules.each |$name, $rule| {
+    firewall { $name:
+      table => 'filter',
+      chain => 'DOCKER_INPUT',
+      jump  => 'DOCKER',
+      *     => $rule,
     }
   }
 
