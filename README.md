@@ -10,8 +10,13 @@ The `docker_firewall` class aims to make running custom iptables rules alongside
 ## Usage
 ```puppet
 class { 'docker_firewall':
-  accept_eth1 => true,
-  subscribe   => Service['docker'],
+  accept_rules => {
+    '200 accept eth1 traffic' => {
+      'iniface' => 'eth1',
+      'proto'   => 'all',
+    },
+  },
+  subscribe    => Service['docker'],
 }
 ```
 This sets up the Docker iptables rules and allows access to containers from connections incoming from the `eth1` interface, while dropping external connections from other interfaces.

@@ -48,14 +48,6 @@
 # [*output_nat_policy*]
 #   The default policy for the OUTPUT chain in the nat table.
 #
-# [*accept_eth0*]
-#   Whether or not to accept connections to Docker containers from the eth0
-#   interface.
-#
-# [*accept_eth1*]
-#   Whether or not to accept connections to Docker containers from the eth1
-#   interface.
-#
 # [*accept_rules*]
 #   A hash of firewall resources to create. These rules will apply to the
 #   DOCKER_INPUT chain and jump to the DOCKER chain so the connection is
@@ -74,8 +66,6 @@ class docker_firewall (
   Variant[String, Array[String]] $forward_filter_purge_ignore  = [],
   Optional[String]               $forward_filter_policy        = 'drop',
 
-  Boolean            $accept_eth0  = false,
-  Boolean            $accept_eth1  = false,
   Hash[String, Hash] $accept_rules = {},
 ) {
   include firewall
@@ -197,28 +187,6 @@ class docker_firewall (
     ctstate => ['RELATED', 'ESTABLISHED'],
     proto   => 'all',
     action  => 'accept',
-  }
-
-  if $accept_eth0 {
-    # -A DOCKER_INPUT -i eth0 -j DOCKER
-    firewall { '200 DOCKER chain, DOCKER_INPUT traffic from eth0':
-      table   => 'filter',
-      chain   => 'DOCKER_INPUT',
-      iniface => 'eth0',
-      proto   => 'all',
-      jump    => 'DOCKER',
-    }
-  }
-
-  if $accept_eth1 {
-    # -A DOCKER_INPUT -i eth1 -j DOCKER
-    firewall { '200 DOCKER chain, DOCKER_INPUT traffic from eth1':
-      table   => 'filter',
-      chain   => 'DOCKER_INPUT',
-      iniface => 'eth1',
-      proto   => 'all',
-      jump    => 'DOCKER',
-    }
   }
 
   $accept_rules.each |$name, $rule| {
