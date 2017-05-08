@@ -22,9 +22,9 @@ class { 'docker_firewall':
 This sets up the Docker iptables rules and allows access to containers from connections incoming from the `eth1` interface, while dropping external connections from other interfaces.
 
 ## Managed chains
-The module manages all the iptables chains that Docker touches. The chains will be purged and unmanaged rules will be removed. You can adjust which rules are *not* removed using the `<chain>_purge_ignore` parameters. See the [manifest source](manifests/init.pp) for more information.
+The module can manage all the iptables chains that Docker touches, depending on how it is configured. With more recent versions of Docker, fewer iptables rules and chains need to be managed. With older versions of Docker, this module can be used to adjust the iptables rules to match those produced by newer versions of Docker.
 
-The following chains will be purged:  
+The two parameters that control which chains are managed are the `$manage_nat_table` and `$manage_filter_table` parameters. When these are set `true`, the following chains will be managed:
 **nat table**
 * `PREROUTING`
 * `OUTPUT`
@@ -32,6 +32,8 @@ The following chains will be purged:
 
 **filter table**
 * `FORWARD`
+
+By default, these parameters are `false`. Set `true`, the chains will be purged and unmanaged rules will be removed. You can adjust which rules are *not* removed using the `<chain>_purge_ignore` parameters. See the [`docker_firewall::nat`](manifests/nat.pp) and [`docker_firewall::filter`](manifests/filter.pp) classes for more information.
 
 By default, the policies of the chains will not be managed. You can use the `<chain>_policy` parameters to adjust this. The exception to this is the `filter`/`FORWARD` chain which, by default, will be set to have a policy of `DROP`. This is something the Docker daemon does since version 1.13.0. For more information see [this discussion](https://github.com/docker/docker/issues/14041).
 
