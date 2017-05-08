@@ -4,27 +4,31 @@
 # interface name should be the title (or name) of the resource.
 define docker_firewall::bridge () {
   if has_interface_with($name) {
-    # -A POSTROUTING -s 172.17.0.0/16 ! -o docker0 -j MASQUERADE
-    $source = getvar("::network_${name}")
-    firewall { "100 DOCKER chain, MASQUERADE ${name} bridge traffic not bound to ${name} bridge":
-      table    => 'nat',
-      chain    => 'POSTROUTING',
-      source   => "${source}/16",
-      outiface => "! ${name}",
-      proto    => 'all',
-      jump     => 'MASQUERADE',
+    if $docker_firewall::manage_nat_table {
+      # -A POSTROUTING -s 172.17.0.0/16 ! -o docker0 -j MASQUERADE
+      $source = getvar("::network_${name}")
+      firewall { "100 DOCKER chain, MASQUERADE ${name} bridge traffic not bound to ${name} bridge":
+        table    => 'nat',
+        chain    => 'POSTROUTING',
+        source   => "${source}/16",
+        outiface => "! ${name}",
+        proto    => 'all',
+        jump     => 'MASQUERADE',
+      }
+
+      # TODO: additional MASQUERADE rule if --userland-proxy=false
     }
 
-    # TODO: additional MASQUERADE rule if --userland-proxy=false
-
-    # -A FORWARD -i docker0 ! -o docker0 -j ACCEPT
-    firewall { "101 accept ${name} traffic to other interfaces on FORWARD chain":
-      table    => 'filter',
-      chain    => 'FORWARD',
-      iniface  => $name,
-      outiface => "! ${name}",
-      proto    => 'all',
-      action   => 'accept',
+    if $docker_firewall::manage_filter_table {
+      # -A FORWARD -i docker0 ! -o docker0 -j ACCEPT
+      firewall { "101 accept ${name} traffic to other interfaces on FORWARD chain":
+        table    => 'filter',
+        chain    => 'FORWARD',
+        iniface  => $name,
+        outiface => "! ${name}",
+        proto    => 'all',
+        action   => 'accept',
+      }
     }
 
     # -A FORWARD -o docker0 -j DOCKER_INPUT
