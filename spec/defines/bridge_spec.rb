@@ -44,32 +44,7 @@ describe 'docker_firewall::bridge' do
         end
       end
 
-      describe 'when facts are not available for the interface' do
-        let(:facts) { facts }
-        it do
-          is_expected.not_to contain_firewall(
-            '100 DOCKER chain, MASQUERADE mybridge bridge traffic not bound '\
-            'to mybridge bridge'
-          )
-        end
-        it do
-          is_expected.not_to contain_firewall(
-            '101 accept mybridge traffic to other interfaces on FORWARD chain'
-          )
-        end
-        it do
-          is_expected.not_to contain_firewall(
-            '102 send FORWARD traffic for mybridge to DOCKER_INPUT chain'
-          )
-        end
-        it do
-          is_expected.not_to contain_firewall(
-            '100 accept traffic from mybridge DOCKER_INPUT chain'
-          )
-        end
-      end
-
-      describe 'docker_firewall with manage_nat_table set true' do
+      context 'docker_firewall with manage_nat_table set true' do
         let(:pre_condition) do
           <<-EOS
           class { 'docker_firewall':
@@ -88,6 +63,16 @@ describe 'docker_firewall::bridge' do
             .with_outiface('! mybridge')
             .with_proto('all')
             .with_jump('MASQUERADE')
+        end
+
+        describe 'when facts are not available for the interface' do
+          let(:facts) { facts }
+          it do
+            is_expected.not_to contain_firewall(
+              '100 DOCKER chain, MASQUERADE mybridge bridge traffic not bound '\
+              'to mybridge bridge'
+            )
+          end
         end
       end
 
