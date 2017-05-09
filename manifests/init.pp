@@ -126,14 +126,15 @@ class docker_firewall (
   # 2. The Puppet firewall module can only insert/order rules relative to its
   #    own rules. It can't insert a rule into the start of an arbitrary chain
   #    with other rules in it.
+  $_inject_rule = 'DOCKER -m comment --comment "Managed by Puppet" -j DOCKER_INPUT'
   exec { 'inject iptables rule to jump from DOCKER to DOCKER_INPUT chain':
-    # Try delete the chain in case it exists but is in the wrong place, then
-    # insert the rule at the start of the chain.
-    command => 'iptables -D DOCKER -j DOCKER_INPUT; iptables -I DOCKER -j DOCKER_INPUT',
+    # Try delete the rule in case it exists but is in the wrong place, then
+    # reinsert the rule at the start of the chain.
+    command => "iptables -D ${_inject_rule}; iptables -I ${_inject_rule}",
     # [ (test), iptables, and grep locations, respectively
     path    => ['/usr/bin', '/sbin', '/bin'],
     # Check the rule is present as the first rule in the chain
-    unless  => "[ \"$(iptables -S DOCKER | grep -m1 '^-A')\" = '-A DOCKER -j DOCKER_INPUT' ]",
+    unless  => "[ \"$(iptables -S DOCKER | grep -m1 '^-A')\" = '-A ${_inject_rule}' ]",
     require => [
       Firewallchain['DOCKER:filter:IPv4'],
       Firewallchain['DOCKER_INPUT:filter:IPv4'],
