@@ -27,12 +27,13 @@ describe 'docker_firewall' do
           is_expected.to contain_exec(
             'inject iptables rule to jump from DOCKER to DOCKER_INPUT chain'
           ).with_command(
-            'iptables -D DOCKER -j DOCKER_INPUT; iptables -I DOCKER -j '\
-            'DOCKER_INPUT'
+            'iptables -D DOCKER -m comment --comment "Managed by Puppet" -j '\
+            'DOCKER_INPUT; iptables -I DOCKER -m comment --comment "Managed '\
+            'by Puppet" -j DOCKER_INPUT'
           ).with_path(['/usr/bin', '/sbin', '/bin'])
             .with_unless(
-              "[ \"$(iptables -S DOCKER | grep -m1 '^-A')\" = '-A DOCKER -j "\
-              "DOCKER_INPUT' ]"
+              '[ "$(iptables -S DOCKER | grep -m1 \'^-A\')" = \'-A DOCKER -m '\
+              'comment --comment "Managed by Puppet" -j DOCKER_INPUT\' ]'
             ).that_requires(
               [
                 'Firewallchain[DOCKER:filter:IPv4]',
