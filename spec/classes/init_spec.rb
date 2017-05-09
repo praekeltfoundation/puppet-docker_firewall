@@ -24,37 +24,25 @@ describe 'docker_firewall' do
         end
 
         it do
-          is_expected.to contain_firewall('999 drop DOCKER_INPUT traffic')
-            .with_table('filter')
-            .with_chain('DOCKER_INPUT')
-            .with_proto('all')
-            .with_action('drop')
+          is_expected.to contain_exec(
+            'inject iptables rule to jump from DOCKER to DOCKER_INPUT chain'
+          ).with_command(
+            'iptables -D DOCKER -m comment --comment "Managed by Puppet" -j '\
+            'DOCKER_INPUT; iptables -I DOCKER -m comment --comment "Managed '\
+            'by Puppet" -j DOCKER_INPUT'
+          ).with_path(['/usr/bin', '/sbin', '/bin'])
+            .with_unless(
+              '[ "$(iptables -S DOCKER | grep -m1 \'^-A\')" = \'-A DOCKER -m '\
+              'comment --comment "Managed by Puppet" -j DOCKER_INPUT\' ]'
+            ).that_requires(
+              [
+                'Firewallchain[DOCKER:filter:IPv4]',
+                'Firewallchain[DOCKER_INPUT:filter:IPv4]'
+              ]
+            )
         end
 
-        it do
-          is_expected.to contain_firewall(
-            '100 accept related, established traffic in DOCKER_INPUT chain'
-          ).with_table('filter')
-            .with_chain('DOCKER_INPUT')
-            .with_ctstate(['RELATED', 'ESTABLISHED'])
-            .with_proto('all')
-            .with_action('accept')
-        end
-
-        # Default docker0 bridge and associated rules
         it { is_expected.to contain_docker_firewall__bridge('docker0') }
-
-        it do
-          is_expected.to contain_firewall(
-            '102 send FORWARD traffic for docker0 to DOCKER_INPUT chain'
-          )
-        end
-
-        it do
-          is_expected.to contain_firewall(
-            '100 accept traffic from docker0 DOCKER_INPUT chain'
-          )
-        end
       end
 
       describe 'with manage_nat_table set true' do
@@ -166,7 +154,26 @@ describe 'docker_firewall' do
 
         it do
           is_expected.to contain_firewall(
-            '101 accept docker0 traffic to other interfaces on FORWARD chain'
+            '200 accept related, established traffic destined for docker0'
+          )
+        end
+
+        it do
+          is_expected.to contain_firewall(
+            '201 forward traffic destined for docker0 to the DOCKER chain'
+          )
+        end
+
+        it do
+          is_expected.to contain_firewall(
+            '202 accept traffic originating from docker0 not destined for '\
+            'docker0'
+          )
+        end
+
+        it do
+          is_expected.to contain_firewall(
+            '203 accept traffic originating from docker0 destined for docker0'
           )
         end
       end
@@ -256,11 +263,11 @@ describe 'docker_firewall' do
         end
       end
 
-      describe 'when a custom accept rule is provided' do
+      describe 'when a custom drop rule is provided' do
         let(:params) do
           {
-            :accept_rules => {
-              '200 accept port 5000 tcp traffic' => {
+            :drop_rules => {
+              '200 drop port 5000 tcp traffic' => {
                 'dport' => 5000,
                 'proto' => 'tcp',
               }
@@ -269,12 +276,12 @@ describe 'docker_firewall' do
         end
 
         it do
-          is_expected.to contain_firewall('200 accept port 5000 tcp traffic')
+          is_expected.to contain_firewall('200 drop port 5000 tcp traffic')
             .with_dport(5000)
             .with_proto('tcp')
             .with_table('filter')
             .with_chain('DOCKER_INPUT')
-            .with_jump('DOCKER')
+            .with_action('drop')
         end
       end
 
