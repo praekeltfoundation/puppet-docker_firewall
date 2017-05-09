@@ -20,28 +20,27 @@ describe 'docker_firewall::bridge' do
 
         it do
           is_expected.not_to contain_firewall(
-            '101 accept mybridge traffic to other interfaces on FORWARD chain'
+            '200 accept related, established traffic destined for docker0'
           )
         end
 
         it do
-          is_expected.to contain_firewall(
-            '102 send FORWARD traffic for mybridge to DOCKER_INPUT chain'
-          ).with_table('filter')
-            .with_chain('FORWARD')
-            .with_outiface('mybridge')
-            .with_proto('all')
-            .with_jump('DOCKER_INPUT')
+          is_expected.not_to contain_firewall(
+            '201 forward traffic destined for docker0 to the DOCKER chain'
+          )
         end
 
         it do
-          is_expected.to contain_firewall(
-            '100 accept traffic from mybridge DOCKER_INPUT chain'
-          ).with_table('filter')
-            .with_chain('DOCKER_INPUT')
-            .with_iniface('mybridge')
-            .with_proto('all')
-            .with_action('accept')
+          is_expected.not_to contain_firewall(
+            '202 accept traffic originating from docker0 not destined for '\
+            'docker0'
+          )
+        end
+
+        it do
+          is_expected.not_to contain_firewall(
+            '203 accept traffic originating from docker0 destined for docker0'
+          )
         end
       end
 
@@ -90,12 +89,6 @@ describe 'docker_firewall::bridge' do
             .with_proto('all')
             .with_jump('MASQUERADE')
         end
-
-        it do
-          is_expected.not_to contain_firewall(
-            '101 accept mybridge traffic to other interfaces on FORWARD chain'
-          )
-        end
       end
 
       describe 'docker_firewall with manage_filter_table set true' do
@@ -116,11 +109,45 @@ describe 'docker_firewall::bridge' do
 
         it do
           is_expected.to contain_firewall(
-            '101 accept mybridge traffic to other interfaces on FORWARD chain'
+            '200 accept related, established traffic destined for mybridge'
+          ).with_table('filter')
+            .with_chain('FORWARD')
+            .with_outiface('mybridge')
+            .with_ctstate(['RELATED', 'ESTABLISHED'])
+            .with_proto('all')
+            .with_action('accept')
+        end
+
+        it do
+          is_expected.to contain_firewall(
+            '201 forward traffic destined for mybridge to the DOCKER chain'
+          ).with_table('filter')
+            .with_chain('FORWARD')
+            .with_outiface('mybridge')
+            .with_proto('all')
+            .with_jump('DOCKER')
+        end
+
+        it do
+          is_expected.to contain_firewall(
+            '202 accept traffic originating from mybridge not destined for '\
+            'mybridge'
           ).with_table('filter')
             .with_chain('FORWARD')
             .with_iniface('mybridge')
             .with_outiface('! mybridge')
+            .with_proto('all')
+            .with_action('accept')
+        end
+
+        it do
+          is_expected.to contain_firewall(
+            '203 accept traffic originating from mybridge destined for '\
+            'mybridge'
+          ).with_table('filter')
+            .with_chain('FORWARD')
+            .with_iniface('mybridge')
+            .with_outiface('mybridge')
             .with_proto('all')
             .with_action('accept')
         end

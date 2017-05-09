@@ -53,15 +53,21 @@
 #
 # [*forward_policy*]
 #   The default policy for the FORWARD chain in the filter table. The default is
-#   'drop'.
+#   'drop'. Starting with Docker 1.13.0 the default policy set by the daemon is
+#   DROP: https://github.com/docker/docker/pull/28257
+#
+# [*drop_rules*]
+#   A hash of firewall resources to create. These rules will apply to the
+#   DOCKER_INPUT chain and drop connections.
 #
 # [*accept_rules*]
 #   A hash of firewall resources to create. These rules will apply to the
-#   DOCKER_INPUT chain and jump to the DOCKER chain so the connection is
-#   accepted if it is really headed for a container. All other parameters for
-#   the firewall resource can be set by the user.
+#   DOCKER_INPUT chain and return to the DOCKER chain so the connection is
+#   accepted if it is really headed for a container. NOTE that the default is
+#   to accept all connections and without a corresponding drop rule, accept
+#   rules do nothing.
 class docker_firewall (
-  Boolean $manage_nat_table                                    = false,
+  Boolean                        $manage_nat_table             = false,
   Variant[String, Array[String]] $prerouting_nat_purge_ignore  = [],
   Optional[String]               $prerouting_nat_policy        = undef,
   Variant[String, Array[String]] $output_nat_purge_ignore      = [],
@@ -69,13 +75,14 @@ class docker_firewall (
   Variant[String, Array[String]] $postrouting_nat_purge_ignore = [],
   Optional[String]               $postrouting_nat_policy       = undef,
 
-  Boolean $manage_filter_table                                 = false,
+  Boolean                        $manage_filter_table          = false,
   Variant[String, Array[String]] $forward_filter_purge_ignore  = [],
   Optional[String]               $forward_filter_policy        = 'drop',
 
   Hash[String, Hash] $bridges                                  = {},
   Hash[String, Hash] $default_bridges                          = {'docker0' => {}},
 
+  Hash[String, Hash] $drop_rules                               = {},
   Hash[String, Hash] $accept_rules                             = {},
 ) {
   include firewall
@@ -98,31 +105,56 @@ class docker_firewall (
     purge  => true,
   }
 
-  # This is a way to achieve "default DROP" for incoming traffic to the docker0
-  # interface.
-  # -A DOCKER_INPUT -j DROP
-  firewall { '999 drop DOCKER_INPUT traffic':
-    table  => 'filter',
-    chain  => 'DOCKER_INPUT',
-    proto  => 'all',
-    action => 'drop',
+  # We need to add rules to the start of the DOCKER chain in order to filter
+  # incoming connections to all containers. We send packets through our custom
+  # DOCKER_INPUT chain for filtering, as we can't manage rules in the DOCKER
+  # chain with `firewall` resources, making adding multiple rules a bit tricky.
+  # In the DOCKER_INPUT chain, we add rules to DROP packets, as described in
+  # this Docker documentation (that might change at any time):
+  # https://docs.docker.com/engine/userguide/networking/default_network/container-communication/#communicating-to-the-outside-world
+
+  # This is, unfortunately, different from the usual "whitelist" approach where
+  # packets are dropped *by default* and rules are added to allow selective
+  # access. This is a "blacklist" approach, which is incovenient but works best
+  # with the existing iptables rules that the Docker daemon sets up.
+
+  # This is a bit of a hack to inject our rule into the start of the DOCKER
+  # chain. It is necessary for a few reasons:
+  # 1. Docker will only append to this chain as containers are launched but it
+  #    will flush the chain on daemon restarts. This means our rule needs to be
+  #    inserted after Docker starts.
+  # 2. The Puppet firewall module can only insert/order rules relative to its
+  #    own rules. It can't insert a rule into the start of an arbitrary chain
+  #    with other rules in it.
+  exec { 'inject iptables rule to jump from DOCKER to DOCKER_INPUT chain':
+    # Try delete the chain in case it exists but is in the wrong place, then
+    # insert the rule at the start of the chain.
+    command => 'iptables -D DOCKER -j DOCKER_INPUT; iptables -I DOCKER -j DOCKER_INPUT',
+    # [ (test), iptables, and grep locations, respectively
+    path    => ['/usr/bin', '/sbin', '/bin'],
+    # Check the rule is present as the first rule in the chain
+    unless  => "[ \"$(iptables -S DOCKER | grep -m1 '^-A')\" = '-A DOCKER -j DOCKER_INPUT' ]",
+    require => [
+      Firewallchain['DOCKER:filter:IPv4'],
+      Firewallchain['DOCKER_INPUT:filter:IPv4'],
+    ],
   }
 
-  # -A DOCKER_INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
-  firewall { '100 accept related, established traffic in DOCKER_INPUT chain':
-    table   => 'filter',
-    chain   => 'DOCKER_INPUT',
-    ctstate => ['RELATED', 'ESTABLISHED'],
-    proto   => 'all',
-    action  => 'accept',
+  $drop_rules.each |$title, $params| {
+    firewall { $title:
+      table  => 'filter',
+      chain  => 'DOCKER_INPUT',
+      action => 'drop',
+      *      => $params,
+    }
   }
 
-  $accept_rules.each |$name, $rule| {
-    firewall { $name:
-      table => 'filter',
-      chain => 'DOCKER_INPUT',
-      jump  => 'DOCKER',
-      *     => $rule,
+  $accept_rules.each |$title, $params| {
+    firewall { $title:
+      table  => 'filter',
+      chain  => 'DOCKER_INPUT',
+      action => 'return',
+      *      => $params,
     }
   }
 
