@@ -1,3 +1,5 @@
+> **DEPRECATION NOTICE**: This Puppet module is no longer maintained and should not be used. We recommend you use [the new `DOCKER-USER` firewall chain](https://blog.donnex.net/docker-and-iptables-filtering/) available in Docker 17.06+ instead. For older Docker versions consider using `--iptables=false` or setting `--ip` to a private interface.
+
 # puppet-docker_firewall
 
 > NOTE: There have been some significant changes to how this module works between each major point release. We've changed our minds a lot (and so has Docker). We recommend that you pin the version of this module you use and read this README thoroughly before upgrading.
